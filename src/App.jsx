@@ -28,6 +28,11 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draft, setDraft] = useState(settings);
   const endAt = useRef(null);
+  const secondsRef = useRef(seconds);
+
+  useEffect(() => {
+    secondsRef.current = seconds;
+  }, [seconds]);
 
   useEffect(() => {
     localStorage.setItem("pomo-settings", JSON.stringify(settings));
@@ -36,43 +41,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("pomo-completed", String(completed));
   }, [completed]);
-
-  useEffect(() => {
-    if (!running) return;
-
-    endAt.current = Date.now() + seconds * 1000;
-
-    const tick = () => {
-      const remaining = Math.max(
-        0,
-        Math.ceil((endAt.current - Date.now()) / 1000)
-      );
-
-      setSeconds(remaining);
-
-      if (remaining === 0) {
-        setRunning(false);
-        playNotification();
-
-        if (session === "work") {
-          setCompleted((count) => count + 1);
-          setSession((current) => {
-            const next = (completed + 1) % 4 === 0 ? "long" : "short";
-            return next;
-          });
-          setSeconds(
-            ((completed + 1) % 4 === 0 ? settings.long : settings.short) * 60
-          );
-        } else {
-          setSession("work");
-          setSeconds(settings.work * 60);
-        }
-      }
-    };
-
-    const interval = setInterval(tick, 250);
-    return () => clearInterval(interval);
-  }, [running, session, settings, completed]);
 
   function playNotification() {
     try {
@@ -96,6 +64,43 @@ function App() {
       console.info("Audio notification is unavailable.");
     }
   }
+
+  useEffect(() => {
+    if (!running) return;
+
+    endAt.current = Date.now() + secondsRef.current * 1000;
+
+    const tick = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((endAt.current - Date.now()) / 1000)
+      );
+
+      setSeconds(remaining);
+
+      if (remaining === 0) {
+        setRunning(false);
+        playNotification();
+
+        if (session === "work") {
+          setCompleted((count) => count + 1);
+          setSession(() => {
+            const next = (completed + 1) % 4 === 0 ? "long" : "short";
+            return next;
+          });
+          setSeconds(
+            ((completed + 1) % 4 === 0 ? settings.long : settings.short) * 60
+          );
+        } else {
+          setSession("work");
+          setSeconds(settings.work * 60);
+        }
+      }
+    };
+
+    const interval = setInterval(tick, 250);
+    return () => clearInterval(interval);
+  }, [running, session, settings, completed]);
 
   function chooseSession(type) {
     setRunning(false);
